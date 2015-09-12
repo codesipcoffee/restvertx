@@ -105,6 +105,7 @@ public class RestVertx {
 				Object[] arguments = buildArgs(paramOrder, paramTypes, argValues, argValueList);
 				
 				try {
+					
 					if (arguments.length != pathParamList.size())
 					{
 						say("Error, please check @Path annotation and ensure it's set and path variable count equals method parameter count");
@@ -122,11 +123,12 @@ public class RestVertx {
 					if (_corsAllowedIPs != null && _corsAllowedIPs.length > 0)
 					{
 						CORS.allow(rc, _corsAllowedIPs);
-					}
-										
+					}								
+					
 					// Initially, we will tell it what type of thing is being returned to avoid performance issues while guessing
 					if (resultType != null)					
 					{
+						
 						if (resultType.equals("file") && (toret instanceof String))
 						{
 							// Send the file
@@ -155,7 +157,8 @@ public class RestVertx {
 				}
 				catch (Exception e)
 				{
-					
+					say(e.getMessage());
+					e.printStackTrace();
 				}
 			});
 		}
@@ -217,19 +220,21 @@ public class RestVertx {
 						case "char":
 							toret[key] = ((String) _argValues.get(_order.get(key).getName())).charAt(0);
 							break;
+						case "java.lang.String":
+							toret[key] = (String) _argValues.get(_order.get(key).getName());
+							break;
 						default:							
-							// Treat it as a JSON Stringified/Serialized Object if it's a string at this point,
+							// Treat it as a JSON Stringified/Serialized Object if the arg value is a string at this point,
 							// try to deserialize/autobind if it is
 							if (_argValues.get(_order.get(key).getName()) instanceof String) {
 								
-//								String jValue = (String) _argValues.get(_order.get(key).getName());
+								String jValue = (String) _argValues.get(_order.get(key).getName());
 								
 								toret[key] = parse(_paramTypes.get(key), _argValues.get(_order.get(key).getName()));
 							}
-							else {									
-								// If an array or complex object, should serialize before sending to handling method as argument
-								// Here we attempt to concatenate the argument to a string
-								toret[key] = "" + _argValues.get(_order.get(key).getName());
+							else {		
+								// Array?
+								toret[key] = _argValues.get(_order.get(key).getName()).toString();
 							}
 							break;
 					}			
