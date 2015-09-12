@@ -244,7 +244,7 @@ example: @CORS and @CORS("http://localhost:3000")
 
 As of 9/12 v0.0.4, this is not production ready and likely has bugs lurking underneath... ;)
 
-Testing & documentation is more important than benchmarks for this project, please include tests with any pull requests you make (here)[https://github.com/codesipcoffee/restvertx/issues]
+Testing & documentation is more important than benchmarks for this project, please include tests with any pull requests you make [here](https://github.com/codesipcoffee/restvertx/issues)
 
 Any comments/questions, see the <a href='https://groups.google.com/forum/#!forum/restvertx' target="_blank">RestVertx Google Group</a>
 
