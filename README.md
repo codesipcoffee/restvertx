@@ -2,7 +2,7 @@
 RestVertx is a mini-framework that makes it easier to build HTTP services with Vert.x
 
 [Main Features](#Main-Features)<br/>
-[Getting Started](#Getting-STarted)<br/>
+[Getting Started](#Getting-Started)<br/>
 [Annotations](#Annotations)<br/>
 [Example on GitHub](https://github.com/codesipcoffee/restvertx/tree/example)
 
