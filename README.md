@@ -26,9 +26,9 @@ public class ShoppingList {
 ```
 
 ##### Feature #2: Enable CORS
-Great for cross-IDE development.  Are you transferring your web application code from one IDE to another because you prefer one for web development and the other for your Vertx endpoints?  Do you want to serve files with node in one IDE while editing your Vertx java files in Eclipse?
+Great for cross-IDE development.  Are you transferring your web application code from one IDE to another because you prefer one for web development and the other for your Vertx endpoints?  Do you want to serve files with node in one IDE while running your Vertx service endpoints in Eclipse on a different port?
 
-Simply call CORS.allowAll() in your App setup before the ending request handler, or else use the CORS annotation to open up a specific handling method
+Simply call CORS.allowAll() in your App setup before the request handlers in your verticle, or else use the CORS annotation to open up a specific handling method
 
 Example: <span style="color:red"> enable CORS for a specific method:</span>
 
@@ -238,6 +238,7 @@ Optional<br/>
 example: @CORS and @CORS("http://localhost:3000")
 
 - Enables CORS on a specific method(s) instead of across the board
+- Can optionally specify the ip/port
 
 ## Important Disclaimers
 
