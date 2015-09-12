@@ -1,6 +1,12 @@
 # RestVertx
 RestVertx is a mini-framework that makes it easier to build HTTP services with Vert.x
 
+[Main Features](#Main-Features)<br/>
+[Getting Started](#Getting-STarted)<br/>
+[Annotations](#Annotations)<br/>
+[Example on GitHub](https://github.com/codesipcoffee/restvertx/tree/example)
+
+<a name="Main-Features"/>
 ### Main Features
 
 ##### Feature #1: Easily create http endpoint handler methods in Java classes to be served by Vertx
@@ -57,7 +63,7 @@ Example: <span style="color:red"> enable CORS at a higher level:</span>
 ```
 
 ##### Feature #3: Autobind JSON arguments to model parameters
-Let's say you have a several variables, and/or nested objects you need to pass in to your endpoint as arguments.  You can create a model which contains your variables and/or nested objects and use it as the parameter in your handling method.  If you send a JSON object in your request, it will automatically be deserialized into the model (using FasterJackson databind, core, and annotations - https://github.com/FasterXML/jackson-core).
+Let's say you have a several variables, and/or nested objects you need to pass in to your endpoint as arguments.  You can create a model which contains your variables and/or nested objects and use it as the parameter in your handling method.  If you send a JSON object in your request, and it will automatically be deserialized into the model (using FasterJackson databind, core, and annotations - https://github.com/FasterXML/jackson-core).
 
 Simply specify the model as the parameter in both the endpoint and handling method and send a valid JSON object in the request
 
@@ -93,7 +99,7 @@ Example:
 	}
 ```
 ``` javascript
-// javascript request object before stringifying
+// javascript request
 var request = {
 	id: "1",
 	name: "Angela",
@@ -102,8 +108,8 @@ var request = {
 	}
 }
 ```
-
-# Instructions
+<a name=Getting-Started />
+# Getting Started
 
 ## Prerequisites
 
@@ -186,10 +192,11 @@ public void start() throws Exception {
 
 That's it, you're done
 
+<a name=Annotations />
 ## Annotations
 
-@Path
-Required
+<span style="color:rgb(21, 186, 1)">@Path</span><br/>
+Required<br/>
 example: @Path("name/:id")
 
 - If you don't set the path, then the method will skipped
@@ -197,43 +204,46 @@ example: @Path("name/:id")
 - In the example path, :id is a path variable
 - If you set your project to remember parameters in your build arguments, then path variable will be matched to parameters, no matter the order in the path
 
-- If you don't set your project to remember params in your build arguments, then path variables will be processed as if they are in the same order as the parameters (even if they're not).  <span style="color:blue">It is highly recommended to set your compiler to remember params for your project to get the most benefit out of RestVertx</span>
+- If you don't set your project to remember params in your build arguments, then path variables will be processed as if they are in the same order as the parameters (even if they're not).  <span style="color:rgb(54, 108, 212)">It is highly recommended to set your compiler to remember params for your project to get the most benefit out of RestVertx</span>
 
-@Method
-Optional
+<span style="color:rgb(21, 186, 1)">@Method</span><br/>
+Optional<br/>
 example: @Method("Get")
 
 - If you don't set the method, we will attempt to determine if the name of the method is an http method and set the method to that name
 - Defaults to Get
 
-@Base (Class Annotation)
-Optional
+<span style="color:rgb(21, 186, 1)">@Base </span> (<b>Class Annotation</b>)<br/>
+Optional<br/>
 example: @Base("api/monkeys")
 
 - Set base path for all methods in the class
 
-@ResultType
-Optional
+<span style="color:rgb(21, 186, 1)">@ResultType</span><br/>
+Optional<br/>
 example: @ResultType("json")
 
 - Sets the return type, which affects the header info as well
+- <b>Don't specify a result type unless it's JSON or a file</b>
 
-@RestIgnore
-Optional
+<span style="color:rgb(21, 186, 1)">@RestIgnore</span><br/>
+Optional<br/>
 example: @RestIgnore
 
 - Ignores the method
 - Note that any method not specifying a path is also ignored
 
-@CORS
-Optional
+<span style="color:rgb(21, 186, 1)">@CORS</span><br/>
+Optional<br/>
 example: @CORS and @CORS("http://localhost:3000")
 
 - Enables CORS on a specific method(s) instead of across the board
 
 ## Important Disclaimers
 
-As of 9/9 v0.0.4, this is not production ready and likely has bugs lurking underneath... ;)
+As of 9/12 v0.0.4, this is not production ready and likely has bugs lurking underneath... ;)
+
+Testing & documentation is more important than benchmarks for this project, please include tests with any pull requests you make
 
 Any comments/questions, see the <a href='https://groups.google.com/forum/#!forum/restvertx' target="_blank">RestVertx Google Group</a>
 
