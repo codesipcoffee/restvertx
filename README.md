@@ -63,7 +63,7 @@ Example: <span style="color:red"> enable CORS at a higher level:</span>
 ```
 
 ##### Feature #3: Autobind JSON arguments to model parameters
-Let's say you have a several variables, and/or nested objects you need to pass in to your endpoint as arguments.  You can create a model which contains your variables and/or nested objects and use it as the parameter in your handling method.  If you send a JSON object in your request, and it will automatically be deserialized into the model (using FasterJackson databind, core, and annotations - https://github.com/FasterXML/jackson-core).
+Let's say you have a several variables, and/or nested objects you need to pass in to your endpoint as arguments.  You can create a model which contains your variables and/or nested objects and use it as the parameter in your handling method.  If you send a JSON object in your request, it will automatically be deserialized into the model (using FasterJackson databind, core, and annotations - https://github.com/FasterXML/jackson-core).
 
 Simply specify the model as the parameter in both the endpoint and handling method and send a valid JSON object in the request
 
@@ -99,7 +99,7 @@ Example:
 	}
 ```
 ``` javascript
-// javascript request
+// javascript request object before stringifying
 var request = {
 	id: "1",
 	name: "Angela",
