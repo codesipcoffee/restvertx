@@ -1,6 +1,8 @@
 # RestVertx
 RestVertx is a mini-framework that makes it easier to build HTTP services with Vert.x
 
+**** <b> A new release is coming this week.  I have finished the bulk of the work 11/30 but still needs some more testing before being released.  See [https://groups.google.com/d/msg/restvertx/K3A85Jvd2sU/zKqFIMH2BwAJ](https://groups.google.com/d/msg/restvertx/K3A85Jvd2sU/zKqFIMH2BwAJ) for more details if you're interested </b> **** 
+
 [Main Features](#Main-Features)<br/>
 [Getting Started](#Getting-Started)<br/>
 [Annotations](#Annotations)<br/>
