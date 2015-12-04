@@ -1,6 +1,7 @@
 package rest.vertx;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
 import java.io.IOException;
@@ -12,9 +13,11 @@ import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map.Entry;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import rest.vertx.Annotations.*;
@@ -29,6 +32,9 @@ public class RestVertx {
 		Router mainRouter = _r;
 		
 		Router subRouter = Router.router(_v);
+		
+		// So we can use getBodyAsJson() and/or getBodyAsString() in our handling methods
+//		subRouter.route().handler(BodyHandler.create());
 		
 		String basePath = getBasePathValue(sub);
 		
@@ -48,7 +54,7 @@ public class RestVertx {
 			if (path == null)
 				continue;
 			
-			String method = getMethod(m);
+			String httpMethod = getHttpMethod(m);
 			
 			HashMap<Integer, Parameter> paramOrder = new HashMap<Integer, Parameter>();
 						
@@ -58,10 +64,19 @@ public class RestVertx {
 			
 			loadParamTypes(paramTypes, m);
 			
-			if (method == null)
+			Parameter[] params = m.getParameters();
+			
+			ArrayList<String> paramNames = new ArrayList<String>();
+			
+			for (int i = 0; i < params.length; i++) {
+				paramNames.add(m.getParameters()[i].getName());
+			}
+									
+			if (httpMethod == null)
 			{
-				// method is not specified, check if the name of the actual method is an http method
-				method = parseMethodName(m);				
+				// Assumption: if http method is not specified in annotation, http method might be embedded in the actual method name
+					// check if the name of the actual method is an http method
+				httpMethod = parseMethodName(m);				
 			}
 			
 			// Assumption: path and/or base path and the http method has been set (method defaults to GET)
@@ -72,8 +87,11 @@ public class RestVertx {
 			
 			// If the path was something/:id, then 'id' would be added to the pathParamList
 			setArgumentNameIndex(pathParamList, path);
-			
-			getRouteMethod(method, path, subRouter).handler(rc -> {
+						
+			getRouteMethod(httpMethod, path, subRouter).handler(rc -> {
+
+				// Specifies whether we should parse the request body for the specified variables
+				boolean parseRequestBody = false;
 												
 				// Store the argument values in a map since they're not guaranteed to be in order
 				HashMap<String,Object> argValues = new HashMap<String, Object>();
@@ -81,6 +99,7 @@ public class RestVertx {
 				
 				if (!pathParamList.isEmpty())
 				{
+					// Assumption: the request body is not being used, argument(s) sent in path params
 					Iterator<String> iter = pathParamList.listIterator();
 					
 					while (iter.hasNext())
@@ -94,26 +113,60 @@ public class RestVertx {
 						argValueList.add(val);
 					}
 				}
-				else {
-					// There weren't any path variables set
+				else if (paramOrder.size() == 1)
+				{
+					JsonObject jObject = rc.getBodyAsJson();
 					
-					// Assumption:
-					// Therefore, there shouldn't be any arguments passed to the handling method
+					if (jObject.size() == 1 && jObject.containsKey(paramNames.get(0)))
+					{
+//						Object val = toString(jObject.getValue(paramNames.get(0)));
+						
+						argValues.put(paramNames.get(0), jObject.getValue(paramNames.get(0)));
+						
+						argValueList.add(jObject.getValue(paramNames.get(0)));
+					}
+					else {
+						// One method parameter is set
+							// Assumption: User sent all objects in one serialized Json string
+						String val = rc.getBodyAsString();
+						
+						argValues.put("__serialized", val);
+						
+						argValueList.add(val);
+						
+						parseRequestBody = true;
+					}
+				}
+				else {					
+					// There weren't any path variables set and there is more than one method parameter,
+					// therefore, we'll try parsing the request body and deserialize/reserialize
+						// Assumption: Request body must be in serialized Json format with each argument variable name set as in the arguments
+					
+					// Deserialize body into Json Object
+					JsonObject jObject = rc.getBodyAsJson();
+					
+					Iterator<HashMap.Entry<String,Object>> iter = jObject.iterator();
+					
+					while (iter.hasNext())
+					{
+						Entry<String, Object> current = iter.next();
+						
+						String key = current.getKey();
+						
+						Object val = current.getValue().toString();
+						
+						argValues.put(key, val);
+						
+						argValueList.add(val);
+					}
+					
+					parseRequestBody = true;
 				}
 				
 				// Places the path variable/arguments in order specified by the parameter
-				Object[] arguments = buildArgs(paramOrder, paramTypes, argValues, argValueList);
+				Object[] arguments = buildArgs(paramOrder, paramTypes, argValues, argValueList, parseRequestBody);
 				
 				try {
-					
-					if (arguments.length != pathParamList.size())
-					{
-						say("Error, please check @Path annotation and ensure it's set and path variable count equals method parameter count");
-						say("Arguments length = " + arguments.length);
-						say("pathParamList size = " + pathParamList.size());
-						
-						rc.response().end();
-					}
 					
 					Object toret = m.invoke(toInvoke, arguments);
 					
@@ -142,7 +195,9 @@ public class RestVertx {
 							rc.response().end((String) toret);
 						}
 					}
-					else {						
+					else {
+						// Assumption: If result type not set, we're sending back plain text
+						
 						rc.response().putHeader("content-type", "text/plain");
 						
 						try {
@@ -167,7 +222,8 @@ public class RestVertx {
 	}
 	
 	static Object[] buildArgs(HashMap<Integer, Parameter> _order, HashMap<Integer, Class<?>> _paramTypes,
-								HashMap<String, Object> _argValues, ArrayList<Object> _argValueList)
+								HashMap<String, Object> _argValues, ArrayList<Object> _argValueList,
+								boolean parseRequestBody)
 	{
 		if (_order.isEmpty() && _argValues.isEmpty())
 			return new Object[0];
@@ -176,76 +232,125 @@ public class RestVertx {
 				
 		if (_order.get(0).getName().contains("arg0"))
 		{
-			// Then program wasn't compiled so parameters were saved
+			// Then program wasn't compiled so parameters were saved or user named first parameter arg0		
+				// Because the parameters weren't saved, we don't know anything about the parameter(s)
+				// We can't autobind or assume we know what the argument type is supposed to be (we could guess, but we could be wrong)
 			
-			// Because the parameters weren't saved, we don't know anything about the parameter(s)
-			// We can't autobind or assume we know what the argument type is supposed to be (we could guess, but we could be wrong)
+			// Assumption: Path variables are in the same order as the parameters
 			
-			// Resolution:
-			// We'll process as if the path variables are in the same order as the parameters			
-			// ?  Will this work if the parameters of handling method aren't all strings ?
-			_argValueList.toArray(toret);
+			if (parseRequestBody)
+			{
+				if (_argValues.containsKey("__serialized"))
+				{
+					// only one Json string sent in request body for one complex object
+					
+					if (_paramTypes.size() == 1)
+						toret[0] = parse(_paramTypes.get(0), _argValues.get("__serialized"));
+				}
+				else {
+					
+				}
+			}
+			else {	
+				_argValueList.toArray(toret);
+			}
 		}
 		else
 		{		
 			// The program was compiled so parameters were saved (yay!)
-			// We'll match the path variable names to the method parameter names, no matter the path variable order
-			for (int key = 0; key < _order.size(); key++)
+			
+			if (parseRequestBody)
 			{
-				// Unbox and cast - Initially a String argument
-				try {		
-					switch (_paramTypes.get(key).getName())
-					{					
-						case "int":
-							toret[key] = Integer.parseInt((String)_argValues.get(_order.get(key).getName()));
-							break;
-						case "double":
-							toret[key] = Double.parseDouble((String)_argValues.get(_order.get(key).getName()));
-							break;
-						case "long":
-							toret[key] = Long.parseLong((String)_argValues.get(_order.get(key).getName()));
-							break;
-						case "boolean":
-							toret[key] = Boolean.parseBoolean((String) _argValues.get(_order.get(key).getName()));
-							break;
-						case "short":
-							toret[key] = Short.parseShort((String) _argValues.get(_order.get(key).getName()));
-							break;
-						case "byte":
-							toret[key] = Byte.parseByte((String) _argValues.get(_order.get(key).getName()));
-							break;
-						case "float":
-							toret[key] = Float.parseFloat((String) _argValues.get(_order.get(key).getName()));
-							break;
-						case "char":
-							toret[key] = ((String) _argValues.get(_order.get(key).getName())).charAt(0);
-							break;
-						case "java.lang.String":
-							toret[key] = (String) _argValues.get(_order.get(key).getName());
-							break;
-						default:							
-							// Treat it as a JSON Stringified/Serialized Object if the arg value is a string at this point,
-							// try to deserialize/autobind if it is
-							if (_argValues.get(_order.get(key).getName()) instanceof String) {
-								
-								String jValue = (String) _argValues.get(_order.get(key).getName());
-								
-								toret[key] = parse(_paramTypes.get(key), _argValues.get(_order.get(key).getName()));
-							}
-							else {		
-								// Array?
-								toret[key] = _argValues.get(_order.get(key).getName()).toString();
-							}
-							break;
-					}			
+				if (_argValues.containsKey("__serialized"))
+				{					
+					if (_paramTypes.size() == 1)
+					{						
+						toret[0] = tryParse(_paramTypes.get(0), _paramTypes.get(0).getName(), _argValues.get("__serialized"));
+					}
 				}
-				catch (Exception e)
+				else {
+					// each argValue will be deserialized into complex objects
+					for (int key = 0; key < _order.size(); key++)
+					{
+						// Unbox and cast - Initially a String argument
+												
+						toret[key] = tryParse(_paramTypes.get(key), _paramTypes.get(key).getName(), _argValues.get(_order.get(key).getName()));
+					}
+				}
+			}
+			else {		
+			
+				// We'll match the path variable names to the method parameter names, no matter the path variable order
+				for (int key = 0; key < _order.size(); key++)
 				{
-					say(e.getMessage());
-					e.printStackTrace();	
+					// Unbox and cast - Initially a String argument
+					try {	
+						toret[key] = tryParse(_paramTypes.get(key), _paramTypes.get(key).getName(), _argValues.get(_order.get(key).getName()));
+					}
+					catch (Exception e)
+					{
+						say(e.getMessage());
+						e.printStackTrace();	
+					}
 				}
 			}
 		}
+		
+		return toret;
+	}
+	
+	private static Object tryParse(Class<?> _paramType, String paramName, Object o)
+	{
+		switch (paramName)
+		{
+			case "java.lang.String":
+				return (String) o;
+			case "int":
+				return Integer.parseInt((String) o);
+			case "boolean":
+				return Boolean.parseBoolean((String) o);
+			case "char":
+				return ((String) o).charAt(0);
+			case "double":
+				return Double.parseDouble((String) o);
+			case "long":
+				return Long.parseLong((String) o);
+			case "short":
+				return Short.parseShort((String) o);
+			case "byte":
+				return Byte.parseByte((String) o);
+			case "float":
+				return Float.parseFloat((String) o);
+			default:	
+				// Treat it as a JSON Stringified/Serialized Object if the arg value is a string at this point,
+				// try to deserialize/autobind if it is
+				if (o instanceof String) {
+															
+					return parse(_paramType, o);
+				}
+				else {		
+					return o.toString();
+				}
+		}
+	}
+	
+	static String toString(Object o)
+	{
+		ObjectMapper mapper = new ObjectMapper();
+		
+		mapper.setVisibility(mapper.getSerializationConfig().getDefaultVisibilityChecker()
+                .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
+                .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
+                .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
+                .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
+		
+		String toret = "";
+		
+		try {
+			toret = mapper.writeValueAsString(o);
+		} catch (JsonProcessingException e) {
+			e.printStackTrace();
+		}	
 		
 		return toret;
 	}
@@ -254,7 +359,7 @@ public class RestVertx {
 	{
 		ObjectMapper mapper = new ObjectMapper();
 		
-		mapper.setVisibilityChecker(mapper.getSerializationConfig().getDefaultVisibilityChecker()
+		mapper.setVisibility(mapper.getSerializationConfig().getDefaultVisibilityChecker()
                 .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
                 .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
                 .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
@@ -326,14 +431,7 @@ public class RestVertx {
 	static String parseMethodName(Method _method)
 	{
 		String name = _method.getName().toLowerCase();
-		
-		if (name.contains("/"))
-		{
-			String[] sections = name.split("/");
-			
-			name = sections[0];
-		}
-		
+				
 		// Check if the method is an exact match of an http method, if it is then we'll treat it as such
 		switch(name)
 		{
@@ -341,12 +439,36 @@ public class RestVertx {
 			case "post":
 			case "put":
 			case "delete":
+			case "options":
 				return _method.getName();
 			default:
 				break;
 		}
 		
-		return null;
+		// If to this point, check if name contains the method name - performance hit but who are we to decide?  Tradeoffs...
+		if (name.contains("get"))
+		{
+			return "get";
+		}
+		else if (name.contains("post"))
+		{
+			return "post";
+		}
+		else if (name.contains("put"))
+		{
+			return "put";
+		}
+		else if (name.contains("delete"))
+		{
+			return "delete";
+		}
+		else if (name.contains("options"))
+		{
+			return "options";
+		}
+		
+		// Defaults to get
+		return "get";
 	}
 	
 	static <T> String getBasePathValue(Class<T> _sub)
@@ -356,7 +478,7 @@ public class RestVertx {
 		if (_sub.isAnnotationPresent(rest.vertx.Annotations.Base.class))
 			basePath = _sub.getAnnotation(Base.class).value();
 		
-		// Make sure the forward slash is present
+		// Make sure the forward slash is present at the very minimum for base path
 		if (basePath.length() > 0 && !basePath.equals("/"))
 			return "/" + basePath;
 		else
@@ -415,8 +537,8 @@ public class RestVertx {
 		{
 			String path = _method.getAnnotation(rest.vertx.Annotations.Path.class).value();
 			
-			// Make sure the forward slash is present
-			if (path.length() > 0 && !path.equals("/"))
+			// Make sure the forward slash is present at the very minimum for method path if it's set
+			if (path.length() > 0 && !(path.charAt(0) == '/'))
 				return "/" + path;
 			
 			return path;
@@ -427,7 +549,7 @@ public class RestVertx {
 		}
 	}
 	
-	static String getMethod(Method _method)
+	static String getHttpMethod(Method _method)
 	{
 		if (_method.isAnnotationPresent(rest.vertx.Annotations.Method.class))
 		{
@@ -502,6 +624,12 @@ public class RestVertx {
 				toret = subRouter.delete(path);
 			else
 				toret = subRouter.delete();
+			break;
+		case "OPTIONS":
+			if (path != null)
+				toret = subRouter.options(path);
+			else
+				toret = subRouter.options();
 			break;
 		default:
 			if (path != null)
