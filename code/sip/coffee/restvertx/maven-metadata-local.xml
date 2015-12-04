@@ -3,10 +3,11 @@
   <groupId>code.sip.coffee</groupId>
   <artifactId>restvertx</artifactId>
   <versioning>
-    <release>0.0.4</release>
+    <release>0.0.5</release>
     <versions>
       <version>0.0.4</version>
+      <version>0.0.5</version>
     </versions>
-    <lastUpdated>20150909120401</lastUpdated>
+    <lastUpdated>20151204034735</lastUpdated>
   </versioning>
 </metadata>
