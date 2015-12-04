@@ -132,7 +132,7 @@ Add this to your repositories:
 <repository>
     <id>git-codesipcoffee</id>
     <name>CodeSipCoffee's Git based repo</name>
-    <url>https://raw.github.com/codesipcoffee/RestVertx/releases</url>
+    <url>https://github.com/codesipcoffee/restvertx/tree/releases</url>
 </repository>
 ```
 
