@@ -29,7 +29,74 @@ public class ShoppingList {
 }
 ```
 
-##### Feature #2: Enable CORS
+(Read Feature #2 below to see examples of handling methods)
+
+##### Feature #2: Autobind JSON arguments to model parameters
+Let's say you have a several variables, and/or nested objects you need to pass in to your endpoint as arguments.  You can create a model which contains your variables and/or nested objects and use it as the parameter in your handling method.  If you send a JSON object in your request (via path param or request body), it will automatically be deserialized into the model (using FasterJackson databind, core, and annotations - https://github.com/FasterXML/jackson-core).
+
+Simply specify the model as the parameter in both the endpoint and handling method and send a valid JSON object in the request
+
+Example handling method using URL encoded Json in the path param for Json object:
+
+```java
+	@Method("Post")
+	@ResultType("json")
+	@Path("shoppingLists/:request")
+	public String getShoppingListPost(ShoppingListRequest request)
+	{		
+		String test = manager.getShoppingList(request.getId());
+		return test;
+	}
+```
+
+Example handling method using Json in the request body (automatically detected and deserialized):
+
+```java
+	@Method("Post")
+	@ResultType("json")
+	@Path("shoppingLists")
+	public String getShoppingListPost(ShoppingListRequest request)
+	{		
+		String test = manager.getShoppingList(request.getId());
+		return test;
+	}
+```
+
+Example data model that RestVertx deserializes into w/Jackson annotations (handling method argument):
+
+```java
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.NON_EMPTY)
+	public class ShoppingListRequest {
+
+		private String id;
+		private String name;
+		private GroceryStore store;
+
+		public ShoppingListRequest() {
+			...
+		}
+
+		// Getters/Setters
+		...
+	}
+```
+
+Example on the client side a request to be sent before stringifying:
+
+``` javascript
+var request = {
+	id: "1",
+	name: "Angela",
+	store: {
+		name: "fake store"
+	}
+}
+```
+
+More examples can be found in the testing source files of the main branch (newer example) as well as in the example branch (older example)
+
+##### Feature #3: Enable CORS
 Great for cross-IDE development.  Are you transferring your web application code from one IDE to another because you prefer one for web development and the other for your Vertx endpoints?  Do you want to serve files with node in one IDE while running your Vertx service endpoints in Eclipse on a different port?
 
 Simply call CORS.allowAll() in your App setup before the request handlers in your verticle, or else use the CORS annotation to open up a specific handling method
@@ -66,52 +133,6 @@ Example: <span style="color:red"> enable CORS at a higher level:</span>
 	}
 ```
 
-##### Feature #3: Autobind JSON arguments to model parameters
-Let's say you have a several variables, and/or nested objects you need to pass in to your endpoint as arguments.  You can create a model which contains your variables and/or nested objects and use it as the parameter in your handling method.  If you send a JSON object in your request (via path param or request body), it will automatically be deserialized into the model (using FasterJackson databind, core, and annotations - https://github.com/FasterXML/jackson-core).
-
-Simply specify the model as the parameter in both the endpoint and handling method and send a valid JSON object in the request
-
-Example:
-
-```java
-// Vertx handling method in Java
-	@Method("Post")
-	@ResultType("json")
-	@Path("shoppingLists/:request")
-	public String getShoppingListPost(ShoppingListRequest request)
-	{		
-		String test = manager.getShoppingList(request.getId());
-		return test;
-	}
-```
-```java
-// java ShoppingListRequest model w/Jackson annotations
-@JsonIgnoreProperties(ignoreUnknown = true)
-@JsonInclude(Include.NON_EMPTY)
-	public class ShoppingListRequest {
-
-		private String id;
-		private String name;
-		private GroceryStore store;
-
-		public ShoppingListRequest() {
-			...
-		}
-
-		// Getters/Setters
-		...
-	}
-```
-``` javascript
-// javascript request object before stringifying
-var request = {
-	id: "1",
-	name: "Angela",
-	store: {
-		name: "fake store"
-	}
-}
-```
 <a name=Getting-Started />
 # Getting Started
 
@@ -145,6 +166,8 @@ Add this in your dependencies:
 	<version>0.0.5</version>
 </dependency>
 ```
+
+(You may need to do a maven force update, please let me know if you experience issues downloading latest artifact with the info above)
 
 ## How to use RestVertx
 
