@@ -39,7 +39,6 @@ Simply specify the model as the parameter in both the endpoint and handling meth
 Example handling method using URL encoded Json in the path param for Json object:
 
 ```java
-// Vertx handling method in Java
 	@Method("Post")
 	@ResultType("json")
 	@Path("shoppingLists/:request")
@@ -53,7 +52,6 @@ Example handling method using URL encoded Json in the path param for Json object
 Example handling method using Json in the request body (automatically detected and deserialized):
 
 ```java
-// Vertx handling method in Java
 	@Method("Post")
 	@ResultType("json")
 	@Path("shoppingLists")
@@ -64,10 +62,9 @@ Example handling method using Json in the request body (automatically detected a
 	}
 ```
 
-Example data model that RestVertx deserializes in to (handling method argument):
+Example data model that RestVertx deserializes into w/Jackson annotations (handling method argument):
 
 ```java
-// java ShoppingListRequest model w/Jackson annotations
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(Include.NON_EMPTY)
 	public class ShoppingListRequest {
@@ -88,7 +85,6 @@ Example data model that RestVertx deserializes in to (handling method argument):
 Example on the client side a request to be sent before stringifying:
 
 ``` javascript
-// javascript request object before stringifying
 var request = {
 	id: "1",
 	name: "Angela",
