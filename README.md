@@ -249,7 +249,7 @@ example: @CORS and @CORS("http://localhost:3000")
 
 <a name=Benchmarks />
 ## Benchmarks
-The times taken to make 50,000 POST request where the handling method deserialized JSON argument to variable and serialized variable back to JSON argument before returning/ending
+The times taken to make 50,000 synchronous, consecutive POST request where the handling method deserialized JSON argument to variable and serialized variable back to JSON argument before returning/ending
 
 Times should only be compared relative to one another to give a very rough estimate of time differences between using RestVertx on top of Vert.x vs Vert.x alone.  There is always a cost for adding a layer on top of something else
 
