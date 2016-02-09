@@ -82,85 +82,88 @@ public class RestVertx {
 
             String resultType = getResultType(m);
 
-            ArrayList<String> pathParamList = new ArrayList<String>();
-
-            // If the path was something/:id, then 'id' would be added to the pathParamList
-            setArgumentNameIndex(pathParamList, path);
-
             getRouteMethod(httpMethod, path, subRouter).handler(rc -> {
+                Object[] arguments = null;
+                if (!hasNoParam(m)) {
 
-                // Specifies whether we should parse the request body for the specified variables
-                boolean parseRequestBody = false;
+                    ArrayList<String> pathParamList = new ArrayList<String>();
 
-                // Store the argument values in a map since they're not guaranteed to be in order
-                HashMap<String, Object> argValues = new HashMap<String, Object>();
-                ArrayList<Object> argValueList = new ArrayList<Object>();
+                    // If the path was something/:id, then 'id' would be added to the pathParamList
+                    setArgumentNameIndex(pathParamList, path);
 
-                if (!pathParamList.isEmpty()) {
-                    // Assumption: the request body is not being used, argument(s) sent in path params
-                    Iterator<String> iter = pathParamList.listIterator();
+                    // Specifies whether we should parse the request body for the specified variables
+                    boolean parseRequestBody = false;
 
-                    while (iter.hasNext()) {
-                        String key = iter.next();
+                    // Store the argument values in a map since they're not guaranteed to be in order
+                    HashMap<String, Object> argValues = new HashMap<String, Object>();
+                    ArrayList<Object> argValueList = new ArrayList<Object>();
 
-                        Object val = rc.request().getParam(key);
+                    if (!pathParamList.isEmpty()) {
+                        // Assumption: the request body is not being used, argument(s) sent in path params
+                        Iterator<String> iter = pathParamList.listIterator();
 
-                        argValues.put(key, val);
+                        while (iter.hasNext()) {
+                            String key = iter.next();
 
-                        argValueList.add(val);
-                    }
-                } else if (paramOrder.size() == 1) {
-                    JsonObject jObject = rc.getBodyAsJson();
-                    // Do not trust the client. He may not have sent the json, or it could be malformed.
-                    // In this case, send an empty response with status code = 400 (bad request)
-                    if (jObject == null) {
-                        rc.response().setStatusCode(400).end();
-                        return;
-                    }
-                    if (jObject.size() == 1 && jObject.containsKey(paramNames.get(0))) {
-                    //Object val = toString(jObject.getValue(paramNames.get(0)));
+                            Object val = rc.request().getParam(key);
 
-                        argValues.put(paramNames.get(0), jObject.getValue(paramNames.get(0)));
+                            argValues.put(key, val);
 
-                        argValueList.add(jObject.getValue(paramNames.get(0)));
+                            argValueList.add(val);
+                        }
+                    } else if (paramOrder.size() == 1) {
+                        JsonObject jObject = rc.getBodyAsJson();
+                        // Do not trust the client. He may not have sent the json, or it could be malformed.
+                        // In this case, send an empty response with status code = 400 (bad request)
+                        if (jObject == null) {
+                            rc.response().setStatusCode(400).end();
+                            return;
+                        }
+                        if (jObject.size() == 1 && jObject.containsKey(paramNames.get(0))) {
+                            //Object val = toString(jObject.getValue(paramNames.get(0)));
+
+                            argValues.put(paramNames.get(0), jObject.getValue(paramNames.get(0)));
+
+                            argValueList.add(jObject.getValue(paramNames.get(0)));
+                        } else {
+                            // One method parameter is set
+                            // Assumption: User sent all objects in one serialized Json string
+                            String val = rc.getBodyAsString();
+
+                            argValues.put("__serialized", val);
+
+                            argValueList.add(val);
+
+                            parseRequestBody = true;
+                        }
                     } else {
-                        // One method parameter is set
-                        // Assumption: User sent all objects in one serialized Json string
-                        String val = rc.getBodyAsString();
+                        // There weren't any path variables set and there is more than one method parameter,
+                        // therefore, we'll try parsing the request body and deserialize/reserialize
+                        // Assumption: Request body must be in serialized Json format with each argument variable name set as in the arguments
 
-                        argValues.put("__serialized", val);
+                        // Deserialize body into Json Object
+                        JsonObject jObject = rc.getBodyAsJson();
 
-                        argValueList.add(val);
+                        Iterator<HashMap.Entry<String, Object>> iter = jObject.iterator();
+
+                        while (iter.hasNext()) {
+                            Entry<String, Object> current = iter.next();
+
+                            String key = current.getKey();
+
+                            Object val = current.getValue().toString();
+
+                            argValues.put(key, val);
+
+                            argValueList.add(val);
+                        }
 
                         parseRequestBody = true;
                     }
-                } else {
-                    // There weren't any path variables set and there is more than one method parameter,
-                    // therefore, we'll try parsing the request body and deserialize/reserialize
-                    // Assumption: Request body must be in serialized Json format with each argument variable name set as in the arguments
-
-                    // Deserialize body into Json Object
-                    JsonObject jObject = rc.getBodyAsJson();
-
-                    Iterator<HashMap.Entry<String, Object>> iter = jObject.iterator();
-
-                    while (iter.hasNext()) {
-                        Entry<String, Object> current = iter.next();
-
-                        String key = current.getKey();
-
-                        Object val = current.getValue().toString();
-
-                        argValues.put(key, val);
-
-                        argValueList.add(val);
-                    }
-
-                    parseRequestBody = true;
+                    arguments = buildArgs(paramOrder, paramTypes, argValues, argValueList, parseRequestBody);
                 }
 
                 // Places the path variable/arguments in order specified by the parameter
-                Object[] arguments = buildArgs(paramOrder, paramTypes, argValues, argValueList, parseRequestBody);
 
                 try {
 
@@ -199,7 +202,6 @@ public class RestVertx {
                     }
                 } catch (Exception e) {
                     say(e.getMessage());
-                    e.printStackTrace();
                 }
             });
         }
@@ -428,12 +430,12 @@ public class RestVertx {
             return "/";
     }
 
+    static boolean hasNoParam(Method _method) {
+        return _method.isAnnotationPresent(NoParam.class);
+    }
+
     static boolean getIgnore(Method _method) {
-        if (_method.isAnnotationPresent(rest.vertx.Annotations.RestIgnore.class)) {
-            return true;
-        } else {
-            return false;
-        }
+        return _method.isAnnotationPresent(RestIgnore.class);
     }
 
     static String[] getCORS(Method _method) {
