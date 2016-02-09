@@ -1,12 +1,22 @@
 package rest.vertx;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.BodyHandler;
+import rest.vertx.Annotations.Base;
+import rest.vertx.Annotations.NoParam;
+import rest.vertx.Annotations.RestIgnore;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
@@ -15,14 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
-
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.ext.web.handler.BodyHandler;
-import rest.vertx.Annotations.*;
 
 public class RestVertx {
 
@@ -165,44 +167,62 @@ public class RestVertx {
 
                 // Places the path variable/arguments in order specified by the parameter
 
-                try {
 
-                    Object toret = m.invoke(toInvoke, arguments);
+                final Object[] arguments_f = arguments;
 
-                    // Handle CORS stuff here (only if set individually on the method via annotation)
-                    String[] _corsAllowedIPs = getCORS(m);
+                // This can be pretty long. Since we have a grip on the Vertx object
+                // we can use it to create a blocking function
+                _v.executeBlocking(
+                        objectFuture -> {
+                            try {
+                                Object toret = m.invoke(toInvoke, arguments_f);
+                                objectFuture.complete(toret);
+                            } catch (InvocationTargetException | IllegalAccessException e) {
+                                e.printStackTrace();
+                                objectFuture.complete(null);
+                            }
+                        },
+                        objectAsyncResult -> {
+                            Object toret = objectAsyncResult.result();
 
-                    if (_corsAllowedIPs != null && _corsAllowedIPs.length > 0) {
-                        CORS.allow(rc, _corsAllowedIPs);
-                    }
+                            // Handle CORS stuff here (only if set individually on the method via annotation)
+                            String[] _corsAllowedIPs = getCORS(m);
+                            if (_corsAllowedIPs != null && _corsAllowedIPs.length > 0) {
+                                CORS.allow(rc, _corsAllowedIPs);
+                            }
 
-                    // Initially, we will tell it what type of thing is being returned to avoid performance issues while guessing
-                    if (resultType != null) {
+                            if (toret == null){
 
-                        if (resultType.equals("file") && (toret instanceof RestResponse)) {
-                            // Send the file
-                            rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).sendFile(((RestResponse) toret).getBody()).end();
-                        } else if (resultType.equals("json") && (toret instanceof RestResponse)) {
-                            // Set the header for json content
-                            rc.response().putHeader("content-type", "application/json; charset=utf-8");
+                                //Well, too bad ...
+                                rc.response().setStatusCode(500).end();
+                            } else if(!(toret instanceof RestResponse)) {
 
-                            rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end(((RestResponse) toret).getBody());
+                                //Tell the developer to read the doc!
+                                rc.response().setStatusCode(500).end();
+                                new RuntimeException("The return type of a REST function MUST be a RestResponse");
+                            }else {
+                                if (resultType != null) {
+
+                                    if (resultType.equals("file")) {
+
+                                        // Send the file
+                                        rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).sendFile(((RestResponse) toret).getBody()).end();
+                                    } else if (resultType.equals("json")) {
+
+                                        // Set the header for json content
+                                        rc.response().putHeader("content-type", "application/json; charset=utf-8");
+                                        rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end(((RestResponse) toret).getBody());
+                                    }
+                                } else {
+
+                                    // Assumption: If result type not set, we're sending back plain text
+                                    rc.response().putHeader("content-type", "text/plain");
+                                    rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end((toret.toString() != null) ? toret.toString() : " ");
+                                }
+                            }
                         }
-                    } else {
-                        // Assumption: If result type not set, we're sending back plain text
+                );
 
-                        rc.response().putHeader("content-type", "text/plain");
-
-                        try {
-                            // Primitive will err
-                            rc.response().end((toret.toString() != null) ? toret.toString() : " ");
-                        } catch (Exception e) {
-                            rc.response().end((toret != null) ? "" + toret : " ");
-                        }
-                    }
-                } catch (Exception e) {
-                    say(e.getMessage());
-                }
             });
         }
 
