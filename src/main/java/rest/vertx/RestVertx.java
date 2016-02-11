@@ -9,10 +9,12 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import rest.vertx.Annotations.Base;
 import rest.vertx.Annotations.NoParam;
 import rest.vertx.Annotations.RestIgnore;
+import rest.vertx.models.RestResponse;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -24,6 +26,7 @@ import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 
 public class RestVertx {
@@ -44,7 +47,8 @@ public class RestVertx {
         Object toInvoke = _toInvoke;
 
         for (Method m : sub.getMethods()) {
-            boolean ignore = getIgnore(m);
+            
+        	boolean ignore = getIgnore(m);
 
             // If ignore set, skip this method right away
             if (ignore)
@@ -83,90 +87,100 @@ public class RestVertx {
             // Assumption: path and/or base path and the http method has been set (method defaults to GET)
 
             String resultType = getResultType(m);
+            
+            ArrayList<String> pathParamList = new ArrayList<String>();
+            
+            // If the path was something/:id, then 'id' would be added to the pathParamList
+            setArgumentNameIndex(pathParamList, path);
 
             getRouteMethod(httpMethod, path, subRouter).handler(rc -> {
-                Object[] arguments = null;
-                if (!hasNoParam(m)) {
+                
+                // Specifies whether we should parse the request body for the specified variables
+                boolean parseRequestBody = false;
 
-                    ArrayList<String> pathParamList = new ArrayList<String>();
-
-                    // If the path was something/:id, then 'id' would be added to the pathParamList
-                    setArgumentNameIndex(pathParamList, path);
-
-                    // Specifies whether we should parse the request body for the specified variables
-                    boolean parseRequestBody = false;
-
-                    // Store the argument values in a map since they're not guaranteed to be in order
-                    HashMap<String, Object> argValues = new HashMap<String, Object>();
-                    ArrayList<Object> argValueList = new ArrayList<Object>();
-
-                    if (!pathParamList.isEmpty()) {
-                        // Assumption: the request body is not being used, argument(s) sent in path params
-                        Iterator<String> iter = pathParamList.listIterator();
-
-                        while (iter.hasNext()) {
-                            String key = iter.next();
-
-                            Object val = rc.request().getParam(key);
-
-                            argValues.put(key, val);
-
-                            argValueList.add(val);
-                        }
-                    } else if (paramOrder.size() == 1) {
-                        JsonObject jObject = rc.getBodyAsJson();
-                        // Do not trust the client. He may not have sent the json, or it could be malformed.
-                        // In this case, send an empty response with status code = 400 (bad request)
-                        if (jObject == null) {
-                            rc.response().setStatusCode(400).end();
-                            return;
-                        }
-                        if (jObject.size() == 1 && jObject.containsKey(paramNames.get(0))) {
-                            //Object val = toString(jObject.getValue(paramNames.get(0)));
-
-                            argValues.put(paramNames.get(0), jObject.getValue(paramNames.get(0)));
-
-                            argValueList.add(jObject.getValue(paramNames.get(0)));
-                        } else {
-                            // One method parameter is set
-                            // Assumption: User sent all objects in one serialized Json string
-                            String val = rc.getBodyAsString();
-
-                            argValues.put("__serialized", val);
-
-                            argValueList.add(val);
-
-                            parseRequestBody = true;
-                        }
-                    } else {
-                        // There weren't any path variables set and there is more than one method parameter,
-                        // therefore, we'll try parsing the request body and deserialize/reserialize
-                        // Assumption: Request body must be in serialized Json format with each argument variable name set as in the arguments
-
-                        // Deserialize body into Json Object
-                        JsonObject jObject = rc.getBodyAsJson();
-
-                        Iterator<HashMap.Entry<String, Object>> iter = jObject.iterator();
-
-                        while (iter.hasNext()) {
-                            Entry<String, Object> current = iter.next();
-
-                            String key = current.getKey();
-
-                            Object val = current.getValue().toString();
-
-                            argValues.put(key, val);
-
-                            argValueList.add(val);
-                        }
-
-                        parseRequestBody = true;
-                    }
-                    arguments = buildArgs(paramOrder, paramTypes, argValues, argValueList, parseRequestBody);
+                // Store the argument values in a map since they're not guaranteed to be in order
+                HashMap<String, Object> argValues = new HashMap<String, Object>();
+                ArrayList<Object> argValueList = new ArrayList<Object>();
+                
+                // If there is more than one parameter for this method, parse the arguments sent via request
+                if (paramOrder.size() > 0) {
+                	
+	                if (!pathParamList.isEmpty()) {
+	                    // Assumption: the request body is not being used, argument(s) sent in path params
+	                    Iterator<String> iter = pathParamList.listIterator();
+	
+	                    while (iter.hasNext()) {
+	                        String key = iter.next();
+	
+	                        Object val = rc.request().getParam(key);
+	
+	                        argValues.put(key, val);
+	
+	                        argValueList.add(val);
+	                    }
+	                } else if (paramOrder.size() == 1) {
+	                	
+	                    JsonObject jObject = rc.getBodyAsJson();
+	                    
+	                    // Do not trust the client. He may not have sent the json, or it could be malformed.
+	                    // In this case, send an empty response with status code = 400 (bad request)
+	                    if (jObject == null) {
+	                        rc.response().setStatusCode(400).end();
+	                        return;
+	                    }
+	                    
+	                    if (jObject.size() == 1 && jObject.containsKey(paramNames.get(0))) {
+	                        //Object val = toString(jObject.getValue(paramNames.get(0)));
+	
+	                        argValues.put(paramNames.get(0), jObject.getValue(paramNames.get(0)));
+	
+	                        argValueList.add(jObject.getValue(paramNames.get(0)));
+	                    } else {
+	                    	// One method parameter is set
+	                        // Assumption: User sent all objects in one serialized Json string
+	                        String val = rc.getBodyAsString();
+	
+	                        argValues.put("__serialized", val);
+	
+	                        argValueList.add(val);
+	
+	                        parseRequestBody = true;
+	                    }
+	                } else if (paramOrder.size() > 1) {
+	                    // There weren't any path variables set and there is more than one method parameter,
+	                    // therefore, we'll try parsing the request body and deserialize/reserialize
+	                    // Assumption: Request body must be in serialized Json format with each argument variable name set as in the arguments
+	
+	                    // Deserialize body into Json Object
+	                    JsonObject jObject = rc.getBodyAsJson();
+	                    
+	                    // Do not trust the client. He may not have sent the json, or it could be malformed.
+	                    // In this case, send an empty response with status code = 400 (bad request)
+	                    if (jObject == null) {
+	                        rc.response().setStatusCode(400).end();
+	                        return;
+	                    }
+	
+	                    Iterator<HashMap.Entry<String, Object>> iter = jObject.iterator();
+	
+	                    while (iter.hasNext()) {
+	                        Entry<String, Object> current = iter.next();
+	
+	                        String key = current.getKey();
+	
+	                        Object val = current.getValue().toString();
+	
+	                        argValues.put(key, val);
+	
+	                        argValueList.add(val);
+	                    }
+	
+	                    parseRequestBody = true;
+	                }
                 }
 
                 // Places the path variable/arguments in order specified by the parameter
-
+                Object[] arguments = buildArgs(paramOrder, paramTypes, argValues, argValueList, parseRequestBody);
 
                 final Object[] arguments_f = arguments;
 
@@ -187,42 +201,50 @@ public class RestVertx {
 
                             // Handle CORS stuff here (only if set individually on the method via annotation)
                             String[] _corsAllowedIPs = getCORS(m);
+                            
                             if (_corsAllowedIPs != null && _corsAllowedIPs.length > 0) {
                                 CORS.allow(rc, _corsAllowedIPs);
                             }
+                            
+                            // Combine errors
+                            if (toret == null || !(toret instanceof RestResponse)){
 
-                            if (toret == null){
-
-                                //Well, too bad ...
-                                rc.response().setStatusCode(500).end();
-                            } else if(!(toret instanceof RestResponse)) {
-
-                                //Tell the developer to read the doc!
-                                rc.response().setStatusCode(500).end();
-                                new RuntimeException("The return type of a REST function MUST be a RestResponse");
+                            	// Handling function didn't return a RestResponse object, return an appropriate error message
+                                rc.response().setStatusCode(500).setStatusMessage("Error: Function didn't return a RestResponse object").end();
+                                
+                                // We don't "have" to throw an exception, a 500 may suffice and client may log error and message in their logs
+//                              new RuntimeException("The return type of a REST function must be a RestResponse");
                             }else {
+                            	
+                            	// Put the custom headers first, if any
+                            	putHeaders(((RestResponse) toret).getHeaders(), rc);
+                            	
                                 if (resultType != null) {
 
                                     if (resultType.equals("file")) {
-
+                                    	
                                         // Send the file
                                         rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).sendFile(((RestResponse) toret).getBody()).end();
                                     } else if (resultType.equals("json")) {
 
-                                        // Set the header for json content
+                                        // Set the header for json content - will override any custom header for content-type
                                         rc.response().putHeader("content-type", "application/json; charset=utf-8");
                                         rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end(((RestResponse) toret).getBody());
                                     }
                                 } else {
-
-                                    // Assumption: If result type not set, we're sending back plain text
-                                    rc.response().putHeader("content-type", "text/plain");
+                                	
+                                	// New assumption: If result type not set, we're sending back whatever the custom headers say to return
+                                	// or else if no custom headers for content-type, we'll return text
+                                	
+                                	if (!rc.response().headers().contains("content-type")) {
+                                		rc.response().putHeader("content-type", "text/plain");
+                                	}
+                                	
                                     rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end((toret.toString() != null) ? toret.toString() : " ");
                                 }
                             }
                         }
                 );
-
             });
         }
 
@@ -579,6 +601,14 @@ public class RestVertx {
         }
 
         return toret;
+    }
+    
+    private static void putHeaders(Map<String, String> headers, RoutingContext rc) {
+    	
+    	for (String key : headers.keySet()) {
+    		
+            rc.response().putHeader(key, headers.get(key));
+    	}        
     }
 
     private static void say(String arg) {
