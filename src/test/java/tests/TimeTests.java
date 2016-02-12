@@ -30,39 +30,39 @@ public class TimeTests extends AbstractVerticle
 	  }
 	  
 //	  @Test
-	  public void testTimeFor_FiftyThousand_UsingVertxAlone()
-	  {
-		  Choir testChoir = new Choir();
-		  
-		  Address choirAddress = new Address();
-		  
-		  choirAddress.setCity("Omaha");
-		  
-		  choirAddress.setState("NE");
-
-		  testChoir.setChoirName("Omaha Children's Choir");
-		  
-		  testChoir.setAddress(choirAddress);
-		  
-		  StopWatch timer = new StopWatch();
-		  
-		  String result = null;
-
-		  timer.start();
-		  
-		  for (int i = 0; i < 50000; i++) {
-			  			  
-			  result = TestUtility.post(timeTestBase + "namez", testChoir.toJson(false));
-			  		  			  
-		  }		  
-
-		  timer.stop();
-		  
-		  assertNotNull(result);
-		  
-		  say("\n\nTime taken Vert.x alone = " + timer.getTime());
-		  say("Time taken (nano) Vert.x alone = " + timer.getNanoTime());
-	  }
+//	  public void testTimeFor_FiftyThousand_UsingVertxAlone()
+//	  {
+//		  Choir testChoir = new Choir();
+//		  
+//		  Address choirAddress = new Address();
+//		  
+//		  choirAddress.setCity("Omaha");
+//		  
+//		  choirAddress.setState("NE");
+//
+//		  testChoir.setChoirName("Omaha Children's Choir");
+//		  
+//		  testChoir.setAddress(choirAddress);
+//		  
+//		  StopWatch timer = new StopWatch();
+//		  
+//		  String result = null;
+//
+//		  timer.start();
+//		  
+//		  for (int i = 0; i < 50000; i++) {
+//			  			  
+//			  result = TestUtility.post(timeTestBase + "namez", testChoir.toJson(false));
+//			  		  			  
+//		  }		  
+//
+//		  timer.stop();
+//		  
+//		  assertNotNull(result);
+//		  
+//		  say("\n\nTime taken Vert.x alone = " + timer.getTime());
+//		  say("Time taken (nano) Vert.x alone = " + timer.getNanoTime());
+//	  }
 	  
 	  @Test
 	  public void testTimeFor_FiftyThousand()

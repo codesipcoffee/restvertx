@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Route;
@@ -14,6 +16,8 @@ import io.vertx.ext.web.handler.BodyHandler;
 import rest.vertx.Annotations.Base;
 import rest.vertx.Annotations.NoParam;
 import rest.vertx.Annotations.RestIgnore;
+import rest.vertx.models.Blocking;
+import rest.vertx.models.RequestInfo;
 import rest.vertx.models.RestResponse;
 
 import java.io.IOException;
@@ -89,6 +93,8 @@ public class RestVertx {
             String resultType = getResultType(m);
             
             ArrayList<String> pathParamList = new ArrayList<String>();
+            
+            RequestInfo requestInfo = new RequestInfo(getBlocking(m));
             
             // If the path was something/:id, then 'id' would be added to the pathParamList
             setArgumentNameIndex(pathParamList, path);
@@ -184,71 +190,102 @@ public class RestVertx {
 
                 final Object[] arguments_f = arguments;
 
-                // This can be pretty long. Since we have a grip on the Vertx object
-                // we can use it to create a blocking function
-                _v.executeBlocking(
-                        objectFuture -> {
-                            try {
-                                Object toret = m.invoke(toInvoke, arguments_f);
-                                objectFuture.complete(toret);
-                            } catch (InvocationTargetException | IllegalAccessException e) {
-                                e.printStackTrace();
-                                objectFuture.complete(null);
-                            }
-                        },
-                        objectAsyncResult -> {
-                            Object toret = objectAsyncResult.result();
-
-                            // Handle CORS stuff here (only if set individually on the method via annotation)
-                            String[] _corsAllowedIPs = getCORS(m);
-                            
-                            if (_corsAllowedIPs != null && _corsAllowedIPs.length > 0) {
-                                CORS.allow(rc, _corsAllowedIPs);
-                            }
-                            
-                            // Combine errors
-                            if (toret == null || !(toret instanceof RestResponse)){
-
-                            	// Handling function didn't return a RestResponse object, return an appropriate error message
-                                rc.response().setStatusCode(500).setStatusMessage("Error: Function didn't return a RestResponse object").end();
-                                
-                                // We don't "have" to throw an exception, a 500 may suffice and client may log error and message in their logs
-//                              new RuntimeException("The return type of a REST function must be a RestResponse");
-                            }else {
-                            	
-                            	// Put the custom headers first, if any
-                            	putHeaders(((RestResponse) toret).getHeaders(), rc);
-                            	
-                                if (resultType != null) {
-
-                                    if (resultType.equals("file")) {
-                                    	
-                                        // Send the file
-                                        rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).sendFile(((RestResponse) toret).getBody()).end();
-                                    } else if (resultType.equals("json")) {
-
-                                        // Set the header for json content - will override any custom header for content-type
-                                        rc.response().putHeader("content-type", "application/json; charset=utf-8");
-                                        rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end(((RestResponse) toret).getBody());
-                                    }
-                                } else {
-                                	
-                                	// New assumption: If result type not set, we're sending back whatever the custom headers say to return
-                                	// or else if no custom headers for content-type, we'll return text
-                                	
-                                	if (!rc.response().headers().contains("content-type")) {
-                                		rc.response().putHeader("content-type", "text/plain");
-                                	}
-                                	
-                                    rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end((toret.toString() != null) ? toret.toString() : " ");
-                                }
-                            }
-                        }
-                );
+                // This can be pretty long. Since we have a grip on the Vertx object we can use it to create a blocking function
+                	// Only use blocking if blocking is indicated in the handling method's blocking annotation
+                if (requestInfo.getBlocking().isBlocking()) {
+	                _v.executeBlocking(
+	                        objectFuture -> {
+	                        	invokeMethod(m, toInvoke, arguments_f, objectFuture);
+	                        },
+	                        requestInfo.getBlocking().isSerial(),
+	                        objectAsyncResult -> {
+	                            Object toret = objectAsyncResult.result();
+	                            
+	                            invokeResponse(rc, m, toret, resultType);
+	                        }
+                	);
+                } else {
+                	// Non-blocking
+                	Object toret = invokeMethod(m, toInvoke, arguments_f, null);
+                    
+                    invokeResponse(rc, m, toret, resultType);               	
+                }
             });
         }
 
         mainRouter.mountSubRouter((basePath == null) ? "/" : basePath, subRouter);
+    }
+    
+    static void invokeResponse(RoutingContext rc, Method m, Object toret, String resultType) {
+    	// Handle CORS stuff here (only if set individually on the method via annotation)
+        String[] _corsAllowedIPs = getCORS(m);
+        
+        if (_corsAllowedIPs != null && _corsAllowedIPs.length > 0) {
+            CORS.allow(rc, _corsAllowedIPs);
+        }
+        
+        // Combine errors
+        if (toret == null || !(toret instanceof RestResponse)){
+
+        	// Handling function didn't return a RestResponse object, return an appropriate error message
+            rc.response().setStatusCode(500).setStatusMessage("Error: Function didn't return a RestResponse object").end();
+            
+            // We don't "have" to throw an exception, a 500 may suffice and client may log error and message in their logs
+//                              new RuntimeException("The return type of a REST function must be a RestResponse");
+        }else {
+        	
+        	// Put the custom headers first, if any
+        	putHeaders(((RestResponse) toret).getHeaders(), rc);
+        	
+            if (resultType != null) {
+
+                if (resultType.equals("file")) {
+                	
+                    // Send the file
+                    rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).sendFile(((RestResponse) toret).getBody()).end();
+                } else if (resultType.equals("json")) {
+
+                    // Set the header for json content - will override any custom header for content-type
+                    rc.response().putHeader("content-type", "application/json; charset=utf-8");
+                    rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end(((RestResponse) toret).getBody());
+                }
+            } else {
+            	
+            	// New assumption: If result type not set, we're sending back whatever the custom headers say to return
+            	// or else if no custom headers for content-type, we'll return text
+            	
+            	if (!rc.response().headers().contains("content-type")) {
+            		rc.response().putHeader("content-type", "text/plain");
+            	}
+            	
+            	String result = ((((RestResponse) toret).getBody() != null) ? ((RestResponse) toret).getBody() : " ");
+            	
+                rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end(result);
+            }
+        }
+    }
+    
+    static Object invokeMethod(Method m, Object toInvoke, Object[] arguments_f, Future<Object> objectFuture)
+    {
+    	try {
+            Object toret = m.invoke(toInvoke, arguments_f);
+            
+            if (objectFuture != null) {
+            	objectFuture.complete(toret);
+            }
+            else {
+            	return toret;
+            }
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            e.printStackTrace();
+            
+            if (objectFuture != null) {
+            	objectFuture.complete(null);
+            }
+        }
+    	
+    	// If error & non-blocking
+    	return null;
     }
 
     static Object[] buildArgs(HashMap<Integer, Parameter> _order, HashMap<Integer, Class<?>> _paramTypes,
@@ -534,6 +571,22 @@ public class RestVertx {
             return null;
         }
     }
+    
+    static Blocking getBlocking(Method _method) {
+    	
+    	boolean blocking = false;
+    	boolean serial = true;
+    	
+    	if (_method.isAnnotationPresent(rest.vertx.Annotations.Blocking.class)) {
+            
+    		blocking = _method.getAnnotation(rest.vertx.Annotations.Blocking.class).value().toLowerCase().equals("true");
+    		serial = _method.getAnnotation(rest.vertx.Annotations.Blocking.class).serial().toLowerCase().equals("true");
+        } else {
+            return new Blocking();
+        }
+    	
+    	return new Blocking(blocking, serial);
+    }
 
     private static final String TYPE_NAME_PREFIX = "class ";
 
@@ -605,10 +658,12 @@ public class RestVertx {
     
     private static void putHeaders(Map<String, String> headers, RoutingContext rc) {
     	
-    	for (String key : headers.keySet()) {
-    		
-            rc.response().putHeader(key, headers.get(key));
-    	}        
+    	if (headers != null) {
+	    	for (String key : headers.keySet()) {
+	    		
+	            rc.response().putHeader(key, headers.get(key));
+	    	}
+    	}
     }
 
     private static void say(String arg) {

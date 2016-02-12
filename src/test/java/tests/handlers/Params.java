@@ -4,6 +4,7 @@ import rest.vertx.RestVertx;
 import rest.vertx.Annotations.Base;
 import rest.vertx.Annotations.Method;
 import rest.vertx.Annotations.Path;
+import rest.vertx.models.RestResponse;
 import tests.models.Number;
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.Router;
@@ -23,9 +24,9 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/int/:number")
-	public String GetInt(int number)
+	public RestResponse GetInt(int number)
 	{		
-		return "" + number;
+		return new RestResponse("" + number);
 	}
 	
 	/**
@@ -35,9 +36,9 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/short/:number")
-	public String Get(short number)
+	public RestResponse Get(short number)
 	{		
-		return "" + number;
+		return new RestResponse("" + number);
 	}
 	
 	/**
@@ -47,9 +48,9 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/char/:number")
-	public String Get(char number)
+	public RestResponse Get(char number)
 	{		
-		return "" + number;
+		return new RestResponse("" + number);
 	}
 	
 	/**
@@ -59,9 +60,9 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/string/:number")
-	public String Get(String number)
+	public RestResponse Get(String number)
 	{		
-		return number;
+		return new RestResponse(number);
 	}
 	
 	/**
@@ -71,9 +72,9 @@ public class Params {
 	 */	
 	@Method("Get")
 	@Path("count/double/:number")
-	public String Get(double number)
+	public RestResponse Get(double number)
 	{		
-		return "" + number;
+		return new RestResponse("" + number);
 	}
 	
 	/**
@@ -83,9 +84,9 @@ public class Params {
 	 */	
 	@Method("Get")
 	@Path("count/long/:number")
-	public String Get(long number)
+	public RestResponse Get(long number)
 	{		
-		return "" + number;
+		return new RestResponse("" + number);
 	}
 	
 	/**
@@ -95,9 +96,9 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/boolean/:number")
-	public String Get(boolean number)
+	public RestResponse Get(boolean number)
 	{		
-		return "" + number;
+		return new RestResponse("" + number);
 	}
 	
 	/**
@@ -107,9 +108,9 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/byte/:number")
-	public String Get(byte number)
+	public RestResponse Get(byte number)
 	{		
-		return "" + number;
+		return new RestResponse("" + number);
 	}
 	
 	/**
@@ -119,9 +120,9 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/float/:number")
-	public String Get(float number)
+	public RestResponse Get(float number)
 	{		
-		return "" + number;
+		return new RestResponse("" + number);
 	}
 	
 	/**
@@ -131,9 +132,9 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/json/:number")
-	public String Get(Number number)
+	public RestResponse Get(Number number)
 	{		
-		return "" + number.getNumb();
+		return new RestResponse("" + number.getNumb());
 	}
 	
 	/**
@@ -143,7 +144,7 @@ public class Params {
 	 */
 	@Method("Get")
 	@Path("count/array/:number")
-	public String Get(int[] number)
+	public RestResponse Get(int[] number)
 	{		
 		String toret = "";
 			
@@ -157,6 +158,6 @@ public class Params {
 			}
 		}
 		
-		return toret;
+		return new RestResponse(toret);
 	}
 }

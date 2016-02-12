@@ -5,6 +5,7 @@ import rest.vertx.Annotations.Base;
 import rest.vertx.Annotations.Method;
 import rest.vertx.Annotations.Path;
 import rest.vertx.Annotations.ResultType;
+import rest.vertx.models.RestResponse;
 import tests.models.Choir;
 
 import java.util.HashMap;
@@ -27,8 +28,8 @@ public class TimeTest {
 	@Method("Post")
 	@Path("names")
 	@ResultType("Json")
-	public String PostChoir(Choir choir)
+	public RestResponse PostChoir(Choir choir)
 	{		
-		return choir.toJson(false);
+		return new RestResponse(choir.toJson(false));
 	}
 }

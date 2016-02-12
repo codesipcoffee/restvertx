@@ -5,6 +5,7 @@ import rest.vertx.Annotations.Base;
 import rest.vertx.Annotations.Method;
 import rest.vertx.Annotations.Path;
 import rest.vertx.Annotations.ResultType;
+import rest.vertx.models.RestResponse;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -19,15 +20,15 @@ public class Instruments {
 	
 	@Method("Get")
 	@Path("name/:id")
-	public String Get(String id)
+	public RestResponse Get(String id)
 	{
-		return id + " is a an instrument used by the choir";
+		return new RestResponse(id + " is a an instrument used by the choir");
 	}
 	
 	@Method("Post")
 	@Path("names")
 	@ResultType("Json")
-	public String PostInstrument(String name)
+	public RestResponse PostInstrument(String name)
 	{
 		System.out.println("Point A Instruments");
 		
@@ -39,13 +40,13 @@ public class Instruments {
 		
 		System.out.println("Point B Instruments");
 		
-		return jObject.toString();
+		return new RestResponse(jObject.toString());
 	}
 	
 	@Method("Post")
 	@Path("nameThem")
 	@ResultType("Json")
-	public String PostInstrument(String nameTwo, String nameOne)
+	public RestResponse PostInstrument(String nameTwo, String nameOne)
 	{
 		System.out.println("Point A Instruments");
 		
@@ -57,6 +58,6 @@ public class Instruments {
 		
 		System.out.println("Point B Instruments");
 		
-		return jObject.toString();
+		return new RestResponse(jObject.toString());
 	}
 }

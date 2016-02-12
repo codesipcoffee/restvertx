@@ -5,6 +5,7 @@ import rest.vertx.Annotations.Base;
 import rest.vertx.Annotations.Method;
 import rest.vertx.Annotations.Path;
 import rest.vertx.Annotations.ResultType;
+import rest.vertx.models.RestResponse;
 import tests.models.Choir;
 
 import java.util.HashMap;
@@ -26,45 +27,45 @@ public class Singers {
 	
 	@Method("Get")
 	@Path("name/:id")
-	public String Get(String id)
+	public RestResponse Get(String id)
 	{
-		return id + " is a wonderful singer in the choir";
+		return new RestResponse(id + " is a wonderful singer in the choir");
 	}
 	
 	@Method("Post")
 	@Path("choirNames")
-	public String JSON_MULTIPLE_SIMPLE_PARAMS(String nameOne, String nameTwo, int howMany)
+	public RestResponse JSON_MULTIPLE_SIMPLE_PARAMS(String nameOne, String nameTwo, int howMany)
 	{
-		return "There were " + howMany + " people in the choir.  Their names included " + nameOne + ", and " + nameTwo;
+		return new RestResponse("There were " + howMany + " people in the choir.  Their names included " + nameOne + ", and " + nameTwo);
 	}
 	
 	@Method("Post")
 	@Path("choirMixedInput")
-	public String JSON_MULTIPLE_SIMPLE_PARAMS(Choir choir, String nameOne, String nameTwo, int howMany)
+	public RestResponse JSON_MULTIPLE_SIMPLE_PARAMS(Choir choir, String nameOne, String nameTwo, int howMany)
 	{
-		return "There were " + howMany + " people in the " + choir.getChoirName() + ".  Their names included " + nameOne + ", and " + nameTwo;
+		return new RestResponse("There were " + howMany + " people in the " + choir.getChoirName() + ".  Their names included " + nameOne + ", and " + nameTwo);
 	}
 	
 	@Method("Get")
 	@Path("nameOfChoir/:choir")
 	@ResultType("Json")
-	public String Put(Choir choir)
+	public RestResponse Put(Choir choir)
 	{
-		return choir.toJson(false);
+		return new RestResponse(choir.toJson(false));
 	}
 	
 	@Method("Post")
 	@Path("names")
 	@ResultType("Json")
-	public String PostChoir(Choir choir)
+	public RestResponse PostChoir(Choir choir)
 	{		
-		return choir.toJson(false);
+		return new RestResponse(choir.toJson(false));
 	}
 	
 	@Method("Post")
 	@Path("namesOfChoirs")
 	@ResultType("Json")
-	public String PostChoir(Choir choirOne, Choir choirTwo)
+	public RestResponse PostChoir(Choir choirOne, Choir choirTwo)
 	{		
 		HashMap<String, Choir> toret = new HashMap<String, Choir>();
 		
@@ -82,6 +83,6 @@ public class Singers {
 				e1.printStackTrace();
 			}
 			
-		return jsonString;
+		return new RestResponse(jsonString);
 	}
 }
