@@ -18,9 +18,6 @@ public class RestResponse {
     /*The status code of the response to send*/
     private int statusCode;
     
-    /* Status message */
-    private String statusMessage;
-    
     /* Map of headers */
     private Map<String, String> headers;
 
@@ -28,12 +25,6 @@ public class RestResponse {
         this.body = body;
         this.statusCode = statusCode;
         this.headers = headers;
-    }
-    
-    public RestResponse(String body, int statusCode, String statusMessage) {
-        this.body = body;
-        this.statusCode = statusCode;
-        this.statusMessage = statusMessage;
     }
     
     public RestResponse(String body, int statusCode) {
@@ -69,13 +60,5 @@ public class RestResponse {
 
 	public void setHeaders(Map<String, String> headers) {
 		this.headers = headers;
-	}
-
-	public String getStatusMessage() {
-		return statusMessage;
-	}
-
-	public void setStatusMessage(String statusMessage) {
-		this.statusMessage = statusMessage;
 	}
 }

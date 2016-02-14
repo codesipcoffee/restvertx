@@ -8,7 +8,6 @@ import java.net.URL;
 
 import org.apache.http.client.fluent.Content;
 import org.apache.http.client.fluent.Request;
-import org.apache.http.client.fluent.Response;
 import org.apache.http.entity.StringEntity;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -50,22 +49,6 @@ public class TestUtility {
 		}
 		
 		return (result == null) ? null : result.toString();
-	}
-	
-	public static Response postGetResponse(String location, String jsonArgs)
-	{		
-		Response result = null;
-		
-		try {
-			StringEntity jsonEntity = new StringEntity(jsonArgs);
-			result = Request.Post(location)
-					.body(jsonEntity)
-				    .execute();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		return (result == null) ? null : result;
 	}
 	
 	public static String get(String location)

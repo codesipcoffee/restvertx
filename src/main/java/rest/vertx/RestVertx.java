@@ -237,21 +237,17 @@ public class RestVertx {
         	// Put the custom headers first, if any
         	putHeaders(((RestResponse) toret).getHeaders(), rc);
         	
-        	// PUt the custom status code/message, if any
-        	putStatus((RestResponse) toret, rc);
-        	
             if (resultType != null) {
 
                 if (resultType.equals("file")) {
                 	
                     // Send the file
-                    rc.response().sendFile(((RestResponse) toret).getBody()).end();
+                    rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).sendFile(((RestResponse) toret).getBody()).end();
                 } else if (resultType.equals("json")) {
 
                     // Set the header for json content - will override any custom header for content-type
                     rc.response().putHeader("content-type", "application/json; charset=utf-8");
-                    
-                    rc.response().end(((RestResponse) toret).getBody());
+                    rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end(((RestResponse) toret).getBody());
                 }
             } else {
             	
@@ -264,7 +260,7 @@ public class RestVertx {
             	
             	String result = ((((RestResponse) toret).getBody() != null) ? ((RestResponse) toret).getBody() : " ");
             	
-                rc.response().end(result);
+                rc.response().setStatusCode(((RestResponse) toret).getStatusCode()).end(result);
             }
         }
     }
@@ -667,19 +663,6 @@ public class RestVertx {
 	    		
 	            rc.response().putHeader(key, headers.get(key));
 	    	}
-    	}
-    }
-    
-    private static void putStatus(RestResponse rr, RoutingContext rc) {
-    	
-    	if (rr.getStatusCode() != 200) {
-    		
-    		rc.response().setStatusCode(rr.getStatusCode());
-    		
-    		if (rr.getStatusMessage() != null && !rr.getStatusMessage().isEmpty())
-    		{
-    			rc.response().setStatusMessage(rr.getStatusMessage());
-    		}
     	}
     }
 
