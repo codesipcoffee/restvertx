@@ -1,16 +1,14 @@
 # RestVertx
 RestVertx is a mini-framework that makes it easier to build HTTP services with Vert.x
 
-### <b>Upcoming changes for next version:</b> [https://groups.google.com/forum/#!topic/restvertx/ZWcADPCcUxw](https://groups.google.com/forum/#!topic/restvertx/ZWcADPCcUxw)
-
-**** <b>Latest Version released 12/3/2015</b> ****
+**** <b>Latest Version released 2/14/2016</b> ****
 
 [Main Features](#Main-Features)<br/>
 [Getting Started](#Getting-Started)<br/>
 [Annotations](#Annotations)<br/>
 [Benchmarks](#Benchmarks)<br/>
 [Tests](#Tests)<br/>
-[Example on GitHub](https://github.com/codesipcoffee/restvertx/tree/example)
+[Google Group](https://groups.google.com/forum/#!forum/restvertx)<br/>
 
 <a name="Main-Features"/>
 ### Main Features
@@ -46,8 +44,7 @@ Example handling method using URL encoded Json in the path param for Json object
 	@Path("shoppingLists/:request")
 	public String getShoppingListPost(ShoppingListRequest request)
 	{		
-		String test = manager.getShoppingList(request.getId());
-		return test;
+		return new RestResponse(manager.getShoppingList(request.getId()));
 	}
 ```
 
@@ -57,10 +54,9 @@ Example handling method using Json in the request body (automatically detected a
 	@Method("Post")
 	@ResultType("json")
 	@Path("shoppingLists")
-	public String getShoppingListPost(ShoppingListRequest request)
+	public RestResponse getShoppingListPost(ShoppingListRequest request)
 	{		
-		String test = manager.getShoppingList(request.getId());
-		return test;
+		return new RestResponse(manager.getShoppingList(request.getId()));
 	}
 ```
 
@@ -110,7 +106,7 @@ Example: <span style="color:red"> enable CORS for a specific method:</span>
 	@Method("Get")
 	@CORS("http://localhost:3000")
 	@Path("/")
-	public String getItems()
+	public RestResponse getItems()
 	{
 		...
 	}
@@ -143,7 +139,7 @@ Example: <span style="color:red"> enable CORS at a higher level:</span>
 - Vert.x version 3+
 - Maven
 - Your favorite java editor
-- A cup of coffee or espresso drink :)
+- A cup of hot tea, coffee, or espresso drink :)
 
 ## Add to your project
 
@@ -165,11 +161,11 @@ Add this in your dependencies:
 <dependency>
 	<groupId>code.sip.coffee</groupId>
 	<artifactId>restvertx</artifactId>
-	<version>0.0.5</version>
+	<version>0.0.6</version>
 </dependency>
 ```
 
-(You may need to do a maven force update, please let me know if you experience issues downloading latest artifact with the info above)
+(You may need to do a maven force update)
 
 ## How to use RestVertx
 
@@ -182,17 +178,22 @@ public ShoppingListFinder(Vertx _vertx, Router router)
 }
 ```
 
-2.Add your annotations to your handling class(es)
+2.Add your annotations to your handling class(es) - you must return a RestResponse object in your handling method
 
 ```java
 // Vertx handling method in Java
 	@Method("Post")
 	@ResultType("json")
 	@Path("shoppingLists/:request")
-	public String getShoppingListPost(ShoppingListRequest request)
+	public RestResponse getShoppingListPost(ShoppingListRequest request)
 	{		
-		String test = manager.getShoppingList(request.getId());
-		return test;
+		if (request.hasSugar()) {
+			// This will return a 404 status code with following status message
+			return new RestResponse("", 404, "Sugar not found ;)");
+		}
+
+		// This will return a normal 200 status code
+		return new RestResponse(manager.getShoppingList(request.getId()));
 	}
 ```
 
@@ -272,6 +273,14 @@ example: @CORS and @CORS("http://localhost:3000")
 - Enables CORS on a specific method(s) instead of across the board
 - Can optionally specify the ip/port
 
+<span style="color:rgb(21, 186, 1)">@Blocking</span><br/>
+Optional<br/>
+example: @Blocking(value = "true", serial = "false")
+
+- Determines whether handling method is blocking or not
+- First string argument is for blocking, second string argument is for serial
+- Defaults to non-blocking
+
 <a name=Benchmarks />
 ## Benchmarks
 The times taken to make 50,000 synchronous, consecutive POST request where the handling method deserialized JSON argument to variable and serialized variable back to JSON argument before returning/ending
@@ -280,18 +289,31 @@ Times should only be compared relative to one another to give a very rough estim
 
 While one test ran, the other @test annotation AND the other route were commented out in TimeTest.java (included under testing source code)
 
+v 0.0.6
+
 RestVertx + Vert.x
 
-	Time taken = 39781 ms
-	Time taken (nano) = 39781703710
+Time taken = 105761 ms
+Time taken (nano) = 105761359928
+
+Vert.x alone
+
+Time taken Vert.x alone = 96890 ms
+Time taken (nano) Vert.x alone = 96890834528
+
+Observations
+v0.0.6 RestVertx on top of Vertx is 9.155% slower than Vertx alone
+v0.0.5 RestVertx 11.5% slower
+Two percent difference isn't alot
+
+v 0.0.5
+
+RestVertx + Vert.x
 
 	Time taken = 39835 ms
 	Time taken (nano) = 39835314664
 
 Vert.x alone
-
-	Time taken Vert.x alone = 35949 ms
-	Time taken (nano) Vert.x alone = 35949119862
 
 	Time taken Vert.x alone = 35721 ms
 	Time taken (nano) Vert.x alone = 35721488940
@@ -299,11 +321,11 @@ Vert.x alone
 
 <a name=Tests />
 ## Tests
-we are trying to include more tests with our releases.  All tests written are passing as of 12/3
+We are trying to include more tests with our releases.  If you have tests to add or found bugs, we would like to add tests for those.  Submit a pull request if possible.  All tests written are passing as of 2/14/16
 
 ## Important Disclaimers
 
-As of 12/3 v0.0.5, this is not production ready and may have bugs lurking underneath.
+As of 2/14/16 v0.0.6, this is not production ready and may have bugs lurking underneath.
 
 Testing & documentation is more important than benchmarks for this project, please include tests with any pull requests you make [here](https://github.com/codesipcoffee/restvertx/issues)
 
