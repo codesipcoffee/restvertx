@@ -302,9 +302,9 @@ Time taken Vert.x alone = 96890 ms
 Time taken (nano) Vert.x alone = 96890834528
 
 Observations
-v0.0.6 RestVertx on top of Vertx is 9.155% slower than Vertx alone
-v0.0.5 RestVertx 11.5% slower
-Two percent difference isn't alot
+- v0.0.6 RestVertx on top of Vertx is 9.155% slower than Vertx alone
+- v0.0.5 RestVertx 11.5% slower
+- Two percent difference isn't alot
 
 v 0.0.5
 
