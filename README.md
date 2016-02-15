@@ -42,7 +42,7 @@ Example handling method using URL encoded Json in the path param for Json object
 	@Method("Post")
 	@ResultType("json")
 	@Path("shoppingLists/:request")
-	public String getShoppingListPost(ShoppingListRequest request)
+	public RestResponse getShoppingListPost(ShoppingListRequest request)
 	{		
 		return new RestResponse(manager.getShoppingList(request.getId()));
 	}
